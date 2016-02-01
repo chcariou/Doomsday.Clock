@@ -1,0 +1,134 @@
+# Doomsday Clock
+# Christophe Cariou, February 1, 2016
+# After read this article :http://www.wired.co.uk/news/archive/2016-01/26/what-is-the-doomsday-clock
+
+
+# Step 1 - Extract data
+# Source: Bulletin of the Atomic Scientists
+
+	library(RCurl)
+	library(stringr)
+	url <- "http://thebulletin.org/timeline"
+	page <- getURL(url)
+	page2 <- str_split(page,"timeline-clock")[[1]]
+
+
+	# Extract the year
+		a <- str_locate(page2[2:23], "timeline-year")[,2]
+		year <- str_sub(page2[2:23],a+3,a+6)
+
+	# Extract the minute
+		a <- str_locate(page2[2:23], "DoomsdayClock_black_")[,2]
+		b <- str_sub(page2[2:23],a+1,a+2)
+		minute <- str_replace(b, "m", "")
+
+	# Extract the explanation
+		a <- str_locate(page2[2:23], "</span>: ")[,2]
+		b <- str_locate(page2[2:23], "</div> </div>")[,1]
+		page3 <- str_sub(page2[2:23],a+1,b-1)
+		page3 <- str_replace(page3, "[\n]","")
+		explanation <- str_replace_all(page3, "[\"]","″")
+
+	# Table
+
+	clock <- data.frame(year,minute,explanation)
+
+
+# Step 2 - Rebuild a clock by year
+
+
+	library(plotrix)
+	library(extrafont)
+
+	clock$minute <- as.numeric(as.character(clock$minute))
+	minutes <- clock$minute[1]
+
+	for (i in 1948:2016) {
+		a <- subset(clock, year==i)
+		if (dim(a)[1]!=0) { minutes <- c(minutes, a$min) 
+		} else { minutes <- c(minutes, minutes[i-1947]) }
+	}
+
+
+	# Create folder to store images
+	
+		dir.create("/Users/ChCariou/Desktop/R_Apocalypse/Images")
+		setwd("/Users/ChCariou/Desktop/R_Apocalypse/images")
+
+
+	
+	# Datavisualisation one by one: all inside a pdf file
+	# PDF for higher quality / resolution of my datavisualisation
+
+	quartz(width=10,height=10, bg="#FEFEFE", type="pdf")
+
+	for (i in 1947:2016) {
+		
+		year <- i
+
+		#dev.off()
+		par(mar=c(0,0,0,0), oma=c(0,0,0,0))
+		plot(0,0,type="n",xlim=c(0,10),ylim=c(0,10),xaxs="i",yaxs="i",axes=FALSE,xlab=NA,ylab=NA, asp=1)
+
+
+	# Draw a clock
+
+	draw.circle(5,5,3,col=NA, border="#262D2D", lwd=50)
+
+	angles <- 360/12*seq(1,12,1)
+	x <- 5+2.2*cos(angles/180*pi)
+	y <- 5+2.2*sin(angles/180*pi)
+	draw.circle(x,y,0.3, ,col="#262D2D", border="#262D2D", lwd=1)
+	draw.circle(x[3],y[3],0.3,col="#B65B68", border="#B65B68", lwd=1)
+
+	segments(5,5,5,6, col="#262D2D", lwd=50, lend="square")
+
+	# Draw the big hand
+
+
+	apocalypse <- 60-minutes[i-1946]
+	aiguille <- 360-(apocalypse*6-90)
+
+	xm <- 5+2*cos(aiguille/180*pi) 
+	ym <- 5+2*sin(aiguille/180*pi) 
+	segments(5,5,xm,ym, col="#4A5F5D", lwd=40, lend="square")
+
+
+	# Add the time
+
+
+	timer <- paste("IT IS STILL ",minutes[i-1946],"MINUTES TO MIDNIGHT",sep="")
+	x0 <- 5-strwidth(timer, family="Avenir Next Heavy", cex=3)/2
+	text(x0,1,"IT IS STILL ", family="Avenir Next Heavy", cex=3, col="#262D2D", pos=4, offset=0)
+	x1 <- x0+strwidth("IT IS STILL ", family="Avenir Next Heavy", cex=3)
+	text(x1,1,paste(minutes[i-1946]," MINUTES ",sep=""), family="Avenir Next Heavy", cex=3, col="#4A5F5D", pos=4, offset=0)
+	x2 <- x1+strwidth(paste(minutes[i-1946]," MINUTES ",sep=""), family="Avenir Next Heavy", cex=3)
+	text(x2,1,"TO MIDNIGHT", family="Avenir Next Heavy", cex=3, col="#B65B68", pos=4, offset=0)
+
+
+	
+	# Add the title
+
+	title <- paste("Doomsday Clock",i, sep=" ")
+	text(5,9,toupper(title), family="Avenir Next Heavy", cex=3, col="#262D2D")
+
+
+
+	# Add me
+
+	text(5,0.3,"RSTUFF 16.03 — CHRISTOPHE CARIOU", cex=0.75, family="Avenir Next Regular", col="#262D2D")
+
+
+	}
+
+	dev.off()
+
+
+# Step 3 - Create a gif from my pdf
+# Tool: ImageMagick http://www.imagemagick.org/script/index.php
+
+	system("/opt/local/bin/convert -delay 10 *.pdf doomsday.gif")
+
+
+
+
